@@ -1,0 +1,14 @@
+# OS / editor noise
+.DS_Store
+.vscode/
+
+# Sample presentation
+sample-pres/
+# Exclude virtual environment directories
+.venv
+venv
+env
+ENV
+.env
+.env.*
+

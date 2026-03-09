@@ -1,0 +1,28 @@
+---
+marp: true
+title: {{DECK_TITLE}}
+author: {{AUTHOR}}
+theme: deck-theme
+paginate: false
+html: true
+size: 16:9
+---
+
+<!-- _class: title -->
+<!-- Available cover variants:
+     title              - standard white (default)
+     title cover        - warm cream
+     title cover dark   - navy gradient
+     title cover accent - terracotta gradient
+     title cover geometric - cream + diagonal lines
+     title cover minimal   - white + terracotta accent line
+-->
+
+# {{DECK_TITLE}}
+
+<p class="subtitle">{{DECK_SUBTITLE}}</p>
+<p class="date">{{DATE}}</p>
+
+---
+
+<!-- _class: closing -->

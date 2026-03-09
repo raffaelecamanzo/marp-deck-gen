@@ -1,0 +1,100 @@
+version: "3"
+
+vars:
+  TEMPLATE_DIR: deck-template
+
+tasks:
+  init-deck:
+    desc: "Create a new presentation repo from template/ into TARGET=..."
+    preconditions:
+      - sh: '[ -n "{{.TARGET}}" ]'
+        msg: 'Missing TARGET. Example: task init-deck TARGET=../my-deck DECK_TITLE="..."'
+      - sh: '[ ! -e "{{.TARGET}}" ]'
+        msg: 'Target already exists. Choose a new TARGET or delete the folder first.'
+      - sh: '[ -d "{{.TEMPLATE_DIR}}" ]'
+        msg: 'deck-template folder not found. Check TEMPLATE_DIR.'
+
+    cmds:
+      - mkdir -p "{{.TARGET}}"
+      - cp -R "{{.TEMPLATE_DIR}}/." "{{.TARGET}}/"
+
+      - |
+        set -euo pipefail
+
+        export TARGET="{{.TARGET}}"
+        export DECK_TITLE="{{default "New Presentation" .DECK_TITLE}}"
+        export DECK_SUBTITLE="{{default "" .DECK_SUBTITLE}}"
+        export AUTHOR="{{default "" .AUTHOR}}"
+        export DATE="{{default "" .DATE}}"
+
+        python3 - <<'PY'
+        import os, re
+        from pathlib import Path
+
+        target = Path(os.environ["TARGET"])
+        raw_date = (os.environ.get("DATE") or "").strip()
+
+        def normalize_date(s: str) -> str:
+          if not s:
+            return ""
+          m = re.match(r"^(\d{2})/(\d{2})/(\d{2}|\d{4})$", s)
+          if m:
+            dd, mm, yy = m.group(1), m.group(2), m.group(3)
+            if len(yy) == 2:
+              yy = "20" + yy
+            return f"{yy}-{mm}-{dd}"
+          if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+            return s
+          return s
+
+        date_norm = normalize_date(raw_date)
+
+        # Build placeholders without literal double braces to avoid Task templating
+        def ph(name: str) -> str:
+          return ("{" * 2) + name + ("}" * 2)
+
+        replacements = {
+          ph("DECK_TITLE"): os.environ.get("DECK_TITLE") or "New Presentation",
+          ph("DECK_SUBTITLE"): os.environ.get("DECK_SUBTITLE") or "",
+          ph("AUTHOR"): os.environ.get("AUTHOR") or "",
+          ph("DATE"): date_norm,
+        }
+
+        exts = {".md", ".txt", ".css", ".yml", ".yaml"}
+
+        for path in target.rglob("*"):
+          if path.is_dir():
+            continue
+          if path.suffix.lower() not in exts:
+            continue
+          try:
+            data = path.read_text(encoding="utf-8")
+          except Exception:
+            continue
+
+          new = data
+          for k, v in replacements.items():
+            new = new.replace(k, v)
+
+          if new != data:
+            path.write_text(new, encoding="utf-8")
+
+        if raw_date and date_norm != raw_date:
+          print(f"✅ Normalized DATE: '{raw_date}' → '{date_norm}'")
+
+        print("✅ Scaffold completed")
+        PY
+      - |
+        cd "{{.TARGET}}"
+        echo "📦 Installing Marp skills locally…"
+        npx skills add https://github.com/raffaelecamanzo/skills/tree/main/marp --skill marp-deck-planner
+        npx skills add https://github.com/raffaelecamanzo/skills/tree/main/marp --skill marp-deck-visual-designer
+        npx skills add https://github.com/raffaelecamanzo/skills/tree/main/marp --skill marp-deck-gen
+        npx skills add https://github.com/raffaelecamanzo/skills/tree/main/marp --skill marp-deck-workflow
+        npx skills add https://github.com/raffaelecamanzo/skills/tree/main/marp --skill marp-deck-checker
+        echo "✅ Skills installed"
+      - |
+        cd "{{.TARGET}}"
+        git init
+        git add .
+        git commit -m "Initial presentation scaffold"

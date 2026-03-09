@@ -1,0 +1,318 @@
+version: "3"
+
+vars:
+  DECK: slides/deck.md
+  THEME: .marp/themes/deck-theme.css
+  OUTDIR: output
+  DIAGRAMS_DIR: diagrams
+  IMAGES_DIR: images
+  MERMAID_IMAGE: minlag/mermaid-cli:11.12.0
+  MERMAID_EXT: png
+  MERMAID_CONFIG: .marp/references/mermaid-config.json
+  # Pin this to your chosen version tag
+  MARP_IMAGE: marpteam/marp-cli:v4.2.2
+  PREVIEW_PORT: 8080
+
+tasks:
+  init:
+    desc: "Create output folder"
+    cmds:
+      - mkdir -p "{{.OUTDIR}}"
+
+  pdf:
+    desc: "Export versioned PDF to output/"
+    deps: [init]
+    preconditions:
+      - sh: docker info >/dev/null 2>&1
+        msg: "Docker daemon not running. Start Docker Desktop and retry."
+    cmds:
+      - |
+        python3 - <<'PY'
+        import os, re, subprocess
+        from pathlib import Path
+
+        deck = os.environ["DECK"]
+        theme = os.environ["THEME"]
+        outdir = Path(os.environ["OUTDIR"])
+        image = os.environ["MARP_IMAGE"]
+
+        text = Path(deck).read_text(encoding="utf-8")
+
+        def yaml_get(key: str) -> str:
+          m = re.search(rf"(?m)^\s*{re.escape(key)}\s*:\s*(.+)\s*$", text)
+          return m.group(1).strip().strip('"').strip("'") if m else ""
+
+        title = yaml_get("title") or "deck"
+        date = yaml_get("date")
+        if not date:
+          m = re.search(r'class="date"\s*>\s*(.+?)\s*<', text, flags=re.IGNORECASE)
+          if m:
+            date = m.group(1).strip()
+        date = date or "undated"
+
+        def slugify(s: str) -> str:
+          s = s.strip()
+          s = re.sub(r"[^\w\s-]", "", s, flags=re.UNICODE)
+          s = re.sub(r"[\s_-]+", "-", s)
+          return s.strip("-") or "deck"
+
+        def normalize_date(s: str) -> str:
+          if not s:
+            return "undated"
+          s = s.strip()
+          if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+            return s
+          if re.match(r"^\d{4}[/.]\d{2}[/.]\d{2}$", s):
+            return s.replace("/", "-").replace(".", "-")
+          return slugify(s)
+
+        date = normalize_date(date)
+
+        outpath = outdir / f"{slugify(title)}_{date}.pdf"
+
+        cmd = [
+          "docker", "run", "--rm",
+          "-v", f"{os.getcwd()}:/home/marp/app",
+          "-w", "/home/marp/app",
+          image,
+          deck,
+          "--theme", theme,
+          "--pdf",
+          "--html",
+          "--allow-local-files",
+          "-o", str(outpath),
+        ]
+
+        print(f"→ Writing: {outpath}")
+        subprocess.check_call(cmd)
+        PY
+    env:
+      DECK: "{{.DECK}}"
+      THEME: "{{.THEME}}"
+      OUTDIR: "{{.OUTDIR}}"
+      MARP_IMAGE: "{{.MARP_IMAGE}}"
+
+  pptx:
+    desc: "Export versioned PPTX to output/"
+    deps: [init]
+    preconditions:
+      - sh: docker info >/dev/null 2>&1
+        msg: "Docker daemon not running. Start Docker Desktop and retry."
+    cmds:
+      - |
+        python3 - <<'PY'
+        import os, re, subprocess
+        from pathlib import Path
+
+        deck = os.environ["DECK"]
+        theme = os.environ["THEME"]
+        outdir = Path(os.environ["OUTDIR"])
+        image = os.environ["MARP_IMAGE"]
+
+        text = Path(deck).read_text(encoding="utf-8")
+
+        def yaml_get(key: str) -> str:
+          m = re.search(rf"(?m)^\s*{re.escape(key)}\s*:\s*(.+)\s*$", text)
+          return m.group(1).strip().strip('"').strip("'") if m else ""
+
+        title = yaml_get("title") or "deck"
+        date = yaml_get("date")
+        if not date:
+          m = re.search(r'class="date"\s*>\s*(.+?)\s*<', text, flags=re.IGNORECASE)
+          if m:
+            date = m.group(1).strip()
+        date = date or "undated"
+
+        def slugify(s: str) -> str:
+          s = s.strip()
+          s = re.sub(r"[^\w\s-]", "", s, flags=re.UNICODE)
+          s = re.sub(r"[\s_-]+", "-", s)
+          return s.strip("-") or "deck"
+
+        def normalize_date(s: str) -> str:
+          if not s:
+            return "undated"
+          s = s.strip()
+          if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+            return s
+          if re.match(r"^\d{4}[/.]\d{2}[/.]\d{2}$", s):
+            return s.replace("/", "-").replace(".", "-")
+          return slugify(s)
+
+        date = normalize_date(date)
+
+        outpath = outdir / f"{slugify(title)}_{date}.pptx"
+
+        cmd = [
+          "docker", "run", "--rm",
+          "-v", f"{os.getcwd()}:/home/marp/app",
+          "-w", "/home/marp/app",
+          image,
+          deck,
+          "--theme", theme,
+          "--pptx",
+          "--html",
+          "--allow-local-files",
+          "-o", str(outpath),
+        ]
+
+        print(f"→ Writing: {outpath}")
+        subprocess.check_call(cmd)
+        PY
+    env:
+      DECK: "{{.DECK}}"
+      THEME: "{{.THEME}}"
+      OUTDIR: "{{.OUTDIR}}"
+      MARP_IMAGE: "{{.MARP_IMAGE}}"
+
+  preview:
+    desc: "Live preview at http://localhost:{{.PREVIEW_PORT}}"
+    preconditions:
+      - sh: docker info >/dev/null 2>&1
+        msg: "Docker daemon not running. Start Docker Desktop and retry."
+    cmds:
+      - |
+        deck_dir="$(dirname "{{.DECK}}")"
+        docker run --rm -it \
+          -v "$PWD:/home/marp/app" \
+          -w /home/marp/app \
+          -p {{.PREVIEW_PORT}}:{{.PREVIEW_PORT}} \
+          {{.MARP_IMAGE}} \
+          "$deck_dir" \
+          --theme {{.THEME}} \
+          --server \
+          --watch \
+          --allow-local-files \
+          --html \
+          --port {{.PREVIEW_PORT}}
+
+  mermaid:
+    desc: "Build Mermaid diagrams from {{.DIAGRAMS_DIR}} into {{.IMAGES_DIR}}"
+    preconditions:
+      - sh: docker info >/dev/null 2>&1
+        msg: "Docker daemon not running. Start Docker Desktop and retry."
+    cmds:
+      - mkdir -p "{{.IMAGES_DIR}}"
+      - |
+        found=0
+        for f in "{{.DIAGRAMS_DIR}}"/*.mmd "{{.DIAGRAMS_DIR}}"/*.mermaid; do
+          [ -e "$f" ] || continue
+          found=1
+          base="$(basename "$f")"
+          name="${base%.*}"
+          docker run --rm -v "$PWD:/data" -w /data "{{.MERMAID_IMAGE}}" \
+            -c "{{.MERMAID_CONFIG}}" \
+            -i "$f" -o "{{.IMAGES_DIR}}/$name.{{.MERMAID_EXT}}"
+        done
+        if [ "$found" -eq 0 ]; then
+          echo "No Mermaid diagrams found in {{.DIAGRAMS_DIR}} (expected .mmd or .mermaid files)."
+        fi
+      - |
+        python3 .marp/scripts/validate_mermaid_assets.py \
+          --diagrams-dir "{{.DIAGRAMS_DIR}}" \
+          --assets-dir "{{.IMAGES_DIR}}" \
+          --ext "{{.MERMAID_EXT}}"
+
+  mermaid-file:
+    desc: "Build a single Mermaid diagram by path (e.g., FILE=diagrams/foo.mmd)"
+    requires:
+      vars: [FILE]
+    preconditions:
+      - sh: docker info >/dev/null 2>&1
+        msg: "Docker daemon not running. Start Docker Desktop and retry."
+    cmds:
+      - mkdir -p "{{.IMAGES_DIR}}"
+      - |
+        f="{{.FILE}}"
+        if [ ! -e "$f" ]; then
+          echo "Diagram not found: $f"
+          exit 1
+        fi
+        base="$(basename "$f")"
+        name="${base%.*}"
+        docker run --rm -v "$PWD:/data" -w /data "{{.MERMAID_IMAGE}}" \
+          -c "{{.MERMAID_CONFIG}}" \
+          -i "$f" -o "{{.IMAGES_DIR}}/$name.{{.MERMAID_EXT}}"
+      - |
+        python3 .marp/scripts/validate_mermaid_assets.py \
+          --diagrams-dir "{{.DIAGRAMS_DIR}}" \
+          --assets-dir "{{.IMAGES_DIR}}" \
+          --ext "{{.MERMAID_EXT}}" \
+          --file "{{.FILE}}"
+
+  mermaid-check:
+    desc: "Validate Mermaid outputs (assets exist + aspect ratios)"
+    cmds:
+      - |
+        python3 .marp/scripts/validate_mermaid_assets.py \
+          --diagrams-dir "{{.DIAGRAMS_DIR}}" \
+          --assets-dir "{{.IMAGES_DIR}}" \
+          --ext "{{.MERMAID_EXT}}"
+
+  mermaid-check-file:
+    desc: "Validate one Mermaid output (e.g., FILE=diagrams/foo.mmd)"
+    requires:
+      vars: [FILE]
+    cmds:
+      - |
+        python3 .marp/scripts/validate_mermaid_assets.py \
+          --diagrams-dir "{{.DIAGRAMS_DIR}}" \
+          --assets-dir "{{.IMAGES_DIR}}" \
+          --ext "{{.MERMAID_EXT}}" \
+          --file "{{.FILE}}"
+
+  excalidraw:
+    desc: "Export Excalidraw diagrams from {{.DIAGRAMS_DIR}} into {{.IMAGES_DIR}}"
+    cmds:
+      - mkdir -p "{{.IMAGES_DIR}}"
+      - npm install --silent --no-fund --no-audit
+      - |
+        found=0
+        for f in "{{.DIAGRAMS_DIR}}"/*.excalidraw; do
+          [ -e "$f" ] || continue
+          found=1
+          base="$(basename "$f")"
+          name="${base%.*}"
+          node .marp/scripts/render-excalidraw.js "$f" "{{.IMAGES_DIR}}/$name.png"
+        done
+        if [ "$found" -eq 0 ]; then
+          echo "No Excalidraw files found in {{.DIAGRAMS_DIR}} (expected .excalidraw files)."
+        fi
+      - |
+        python3 .marp/scripts/validate_mermaid_assets.py \
+          --diagrams-dir "{{.DIAGRAMS_DIR}}" \
+          --assets-dir "{{.IMAGES_DIR}}" \
+          --ext "png"
+
+  excalidraw-file:
+    desc: "Export a single Excalidraw file (e.g., FILE=diagrams/foo.excalidraw)"
+    requires:
+      vars: [FILE]
+    cmds:
+      - mkdir -p "{{.IMAGES_DIR}}"
+      - npm install --silent --no-fund --no-audit
+      - |
+        f="{{.FILE}}"
+        if [ ! -e "$f" ]; then
+          echo "File not found: $f"
+          exit 1
+        fi
+        base="$(basename "$f")"
+        name="${base%.*}"
+        node .marp/scripts/render-excalidraw.js "$f" "{{.IMAGES_DIR}}/$name.png"
+      - |
+        python3 .marp/scripts/validate_mermaid_assets.py \
+          --diagrams-dir "{{.DIAGRAMS_DIR}}" \
+          --assets-dir "{{.IMAGES_DIR}}" \
+          --ext "png" \
+          --file "{{.FILE}}"
+
+  artifacts:
+    desc: "List generated artifacts"
+    cmds:
+      - ls -lah "{{.OUTDIR}}" || true
+
+  clean:
+    desc: "Remove generated artifacts"
+    cmds:
+      - rm -rf "{{.OUTDIR}}"

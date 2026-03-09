@@ -1,0 +1,56 @@
+# Git worktrees
+.worktrees/
+
+# Generated artifacts
+output/
+samples/
+
+# OS / editor noise
+.DS_Store
+.vscode/
+
+# Sample presentation
+sample-pres/
+# Exclude virtual environment directories
+.venv
+venv
+env
+ENV
+.env
+.env.*
+
+# Exclude Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+# Exclude Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+# Exclude distribution/build directories
+build/
+dist/
+*.egg-info/
+# Exclude IDE/editor specific files
+.vscode/
+.idea/
+*.swp
+# Exclude system files
+.DS_Store
+Thumbs.db
+
+# Exclude log files
+*.log
+# Exclude temporary files
+*.tmp
+*.bak
+# Exclude coverage reports
+htmlcov/
+.coverage
+# Exclude pytest cache
+.pytest_cache/
+# Exclude mypy cache
+.mypy_cache/
+# Exclude Sphinx documentation build
+docs/_build/
+# Exclude compiled C extensions
+*.so
+
