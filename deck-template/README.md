@@ -109,3 +109,6 @@ One‑shot orchestrator — `marp-deck-workflow`
 - The theme name in `slides/deck.md` must match `@theme deck-theme` in `.marp/themes/deck-theme.css`.
 - Keep asset paths relative to `slides/` (e.g., `../.marp/assets/...`).
 - Frontpage (`<!-- _class: title -->` or `<!-- _class: title cover [variant] -->`) and closing (`<!-- _class: closing -->`) must remain intact; user slides are inserted between them.
+
+## License
+Apache-2.0
