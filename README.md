@@ -147,6 +147,9 @@ Skill references (hosted at [raffaelecamanzo/skills](https://github.com/raffaele
 - The reference rules in [deck-template/.marp/references/deck-template.md](deck-template/.marp/references/deck-template.md) are the source of truth for layouts/classes
 - Skills are hosted externally at [raffaelecamanzo/skills/marp](https://github.com/raffaelecamanzo/skills/tree/main/marp)
 
+## License
+Apache-2.0
+
 ---
 
 Happy presenting!
