@@ -10,7 +10,7 @@ vars:
   MERMAID_EXT: png
   MERMAID_CONFIG: .marp/references/mermaid-config.json
   # Pin this to your chosen version tag
-  MARP_IMAGE: marpteam/marp-cli:v4.2.2
+  MARP_IMAGE: marpteam/marp-cli:v4.3.0
   PREVIEW_PORT: 8080
 
 tasks:
